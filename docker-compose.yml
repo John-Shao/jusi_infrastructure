@@ -1,0 +1,58 @@
+# 基础设施服务 - MySQL 和 Redis
+# 这个文件独立管理共享的数据库和缓存服务，可被多个业务服务使用
+version: '3.8'
+
+services:
+  # MySQL 数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: jusi_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root123456}
+      MYSQL_DATABASE: ${DB_NAME:-jusi_db}
+      MYSQL_USER: ${DB_USER:-jusi}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Shanghai
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - jusi_shared_network
+
+  # Redis 缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: jusi_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-} --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - jusi_shared_network
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  jusi_shared_network:
+    name: jusi_shared_network
+    driver: bridge
