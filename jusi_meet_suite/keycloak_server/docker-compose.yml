@@ -18,6 +18,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - jusi_shared_network
 
   keycloak:
     image: docker.xuanyuan.run/keycloak/keycloak:26.5.4
@@ -31,7 +33,6 @@ services:
       # 初始管理员
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
-
       # 数据库
       KC_DB: postgres
       KC_DB_URL_HOST: postgres
@@ -39,22 +40,24 @@ services:
       KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: ${KC_DB_USERNAME}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-
       # 反向代理 / 域名
       KC_HOSTNAME: https://id.jusicloud.com
       KC_HOSTNAME_STRICT: "true"
       KC_PROXY_HEADERS: xforwarded
-
       # 如果 TLS 在反向代理终止，Keycloak 容器内走 HTTP
       KC_HTTP_ENABLED: "true"
-
-      # 监控与健康检查
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
-
     ports:
       - "8080:8080"
       - "9000:9000"
+    networks:
+      - jusi_shared_network
 
 volumes:
   postgres_data:
+
+networks:
+  jusi_shared_network:
+    name: jusi_shared_network
+    driver: bridge
