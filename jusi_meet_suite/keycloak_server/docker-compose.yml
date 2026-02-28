@@ -1,0 +1,60 @@
+# 基础设施服务 - Keycloak + PostgreSQL
+# 这个文件独立管理共享的数据库和缓存服务，可被多个业务服务使用
+version: '3.8'
+
+services:
+  postgres:
+    image: docker.xuanyuan.run/library/postgres:16
+    container_name: keycloak-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: docker.xuanyuan.run/keycloak/keycloak:26.5.4
+    container_name: jusi-keycloak
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: start
+    environment:
+      # 初始管理员
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+
+      # 数据库
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+
+      # 反向代理 / 域名
+      KC_HOSTNAME: https://id.jusicloud.com
+      KC_HOSTNAME_STRICT: "true"
+      KC_PROXY_HEADERS: xforwarded
+
+      # 如果 TLS 在反向代理终止，Keycloak 容器内走 HTTP
+      KC_HTTP_ENABLED: "true"
+
+      # 监控与健康检查
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+
+volumes:
+  postgres_data:
