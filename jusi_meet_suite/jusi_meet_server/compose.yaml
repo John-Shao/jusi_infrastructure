@@ -1,22 +1,23 @@
 services:
-  postgresql:
-    image: postgres:16
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
-      interval: 1s
-      timeout: 2s
-      retries: 300
-    env_file:
-    - env.d/postgresql
-    - env.d/common
-    volumes:
-    - ./data/databases/backend:/var/lib/postgresql/data
-
   redis:
-    image: redis:5
+    image: docker.xuanyuan.run/library/redis:8.0
+    container_name: meet_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-} --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping 2>/dev/null || redis-cli ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - jusi_shared_network
 
   backend:
-    image: lasuite/meet-backend:latest
+    image: docker.xuanyuan.run/lasuite/meet-backend:v1.8.0
     user: ${DOCKER_USER:-1000}
     restart: always
     env_file:
@@ -47,43 +48,8 @@ services:
     env_file:
     - .env
     - env.d/common
-    # Uncomment and set your values if using our nginx proxy example
-    # environment:
-    # - VIRTUAL_HOST=${MEET_HOST} # used by nginx proxy 
-    # - VIRTUAL_PORT=8083 # used by nginx proxy
-    # - LETSENCRYPT_HOST=${MEET_HOST} # used by lets encrypt to generate TLS certificate
     depends_on:
       backend:
         condition: service_healthy
     volumes:
     - ./default.conf.template:/etc/nginx/templates/docs.conf.template
-# Uncomment if using our nginx proxy example
-#    networks:
-#    - proxy-tier
-#    - default
-
-  livekit:
-    image: livekit/livekit-server:latest
-    command: --config /config.yaml
-    ports:
-    - 7881:7881/tcp
-    - 7882:7882/udp
-    volumes:
-      - ./livekit-server.yaml:/config.yaml
-    # Uncomment and set your values if using our nginx proxy example
-    # environment:
-    # - VIRTUAL_HOST=${LIVEKIT_HOST} # used by nginx proxy 
-    # - VIRTUAL_PORT=7880 # used by nginx proxy
-    # - LETSENCRYPT_HOST=${LIVEKIT_HOST} # used by lets encrypt to generate TLS certificate
-    depends_on:
-      redis:
-        condition: service_started
-# Uncomment if using our nginx proxy example
-#    networks:
-#    - proxy-tier
-#    - default
-
-# Uncomment if using our nginx proxy example
-#networks:
-#  proxy-tier:
-#    external: true
