@@ -2,7 +2,8 @@ port: 7880
 redis:
   address: redis:6379
 keys:
-  meet: <your livekit secret key>
+  # your livekit secret key
+  meet: 4KrTfzJNzefnxVtfPqhNLk8FwecFQ9UZyPhUnnU9FCMD
 # WebRTC configuration
 rtc:
   # # when set, LiveKit will attempt to use a UDP mux so all UDP traffic goes through
